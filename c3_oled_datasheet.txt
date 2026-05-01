@@ -1,0 +1,168 @@
+ESP32-C3 0.42" OLED (ABRobot / generic SuperMini) – TECHNICAL REFERENCE
+======================================================================
+
+HARDWARE OVERVIEW
+-----------------
+- MCU: ESP32-C3 (RISC-V, WiFi + BLE 5.0) :contentReference[oaicite:0]{index=0}
+- Flash: 4 MB SPI :contentReference[oaicite:1]{index=1}
+- Board size: ~25 x 20 mm :contentReference[oaicite:2]{index=2}
+- Power input: 3.3V – 6V :contentReference[oaicite:3]{index=3}
+- USB: native USB (power + programming, no external UART needed) :contentReference[oaicite:4]{index=4}
+- Antenna: onboard ceramic :contentReference[oaicite:5]{index=5}
+
+INTERFACES
+----------
+- WiFi: 2.4 GHz 802.11 b/g/n :contentReference[oaicite:6]{index=6}
+- Bluetooth: BLE 5.0 :contentReference[oaicite:7]{index=7}
+- GPIO: ~11 usable pins :contentReference[oaicite:8]{index=8}
+- ADC: GPIO0–GPIO5 :contentReference[oaicite:9]{index=9}
+- UART: GPIO20 (RX), GPIO21 (TX) :contentReference[oaicite:10]{index=10}
+- SPI: available :contentReference[oaicite:11]{index=11}
+- I2C: multiple mappings possible (see below)
+
+ONBOARD COMPONENTS
+------------------
+- OLED display: 0.42"
+- Controller: SSD1306 :contentReference[oaicite:12]{index=12}
+- Effective resolution: 72 x 40 pixels :contentReference[oaicite:13]{index=13}
+- Internal framebuffer: 128 x 64 (important) :contentReference[oaicite:14]{index=14}
+- LED: GPIO8 :contentReference[oaicite:15]{index=15}
+- BOOT button: GPIO9 :contentReference[oaicite:16]{index=16}
+- RESET button: dedicated reset :contentReference[oaicite:17]{index=17}
+
+DISPLAY (CRITICAL DETAILS)
+--------------------------
+- Display is NOT true 72x40
+- It is a cropped area inside 128x64 framebuffer
+- Required offset (empirically determined for ABRobot/generic SuperMini):
+  - X offset = 28
+  - Y offset = 24
+- I2C address: 0x3C :contentReference[oaicite:19]{index=19}
+
+- Important warning:
+  - "starting point of the screen is 12864 (13,14)"
+  - Not compatible with typical 0.42" OLED configs :contentReference[oaicite:20]{index=20}
+
+I2C PIN MAPPING
+---------------
+Primary (used by OLED):
+- SDA = GPIO5
+- SCL = GPIO6 :contentReference[oaicite:21]{index=21}
+
+Secondary (sometimes exposed):
+- SDA = GPIO8
+- SCL = GPIO9 :contentReference[oaicite:22]{index=22}
+
+Note:
+- Only ONE hardware I2C bus exists
+- Switching between pin sets requires:
+  - Wire.end()
+  - Wire.begin(new_pins)
+
+BOOT / FLASHING
+---------------
+- Enter download mode:
+  1. Hold BOOT button
+  2. Plug USB
+  3. Release button :contentReference[oaicite:23]{index=23}
+
+- Native USB CDC supported (no FTDI required) :contentReference[oaicite:24]{index=24}
+- Some boards may require reflashing bootloader :contentReference[oaicite:25]{index=25}
+
+DISPLAY PROGRAMMING – METHOD 1 (OFFSET HACK)
+--------------------------------------------
+Use full 128x64 buffer + manual offset
+
+Library:
+- U8g2
+
+Constructor:
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(
+    U8G2_R0,
+    U8X8_PIN_NONE,
+    6, // SCL
+    5  // SDA
+);
+
+
+Constants (empirically correct for ABRobot/generic SuperMini):
+int width = 72;
+int height = 40;
+int xOffset = 28;
+int yOffset = 24;
+
+Draw example:
+u8g2.drawFrame(xOffset, yOffset, width, height);
+
+DISPLAY PROGRAMMING – METHOD 2 (PROPER DRIVER)
+----------------------------------------------
+Better approach (no offset needed):
+
+U8G2_SSD1306_72X40_ER_F_HW_I2C u8g2(
+    U8G2_R0,
+    U8X8_PIN_NONE,
+    6,
+    5
+);
+
+Advantages:
+- Native resolution handling
+- Cleaner code
+- No clipping issues
+
+INIT SETTINGS (RECOMMENDED)
+---------------------------
+u8g2.begin();
+u8g2.setContrast(255);
+u8g2.setBusClock(400000);   // 400 kHz I2C
+
+COMMON ISSUES
+-------------
+- Nothing visible on screen:
+  -> wrong pins (must be 5/6)
+
+- Clipped graphics:
+  -> forgot offset or using wrong constructor
+
+- I2C devices not detected:
+  -> display already uses bus
+  -> need to share pins OR reinit bus
+
+- Serial not working:
+  -> enable USB CDC on boot
+
+- Different boards behave differently:
+  -> many clones with different wiring
+
+USAGE NOTES
+-----------
+- Board marketed under multiple names:
+  - ABRobot
+  - Aitver
+  - generic “ESP32-C3 OLED 0.42” :contentReference[oaicite:26]{index=26}
+
+- Designed for:
+  - IoT
+  - wearables
+  - ultra-compact builds :contentReference[oaicite:27]{index=27}
+
+- Low power compared to ESP32-S3 :contentReference[oaicite:28]{index=28}
+
+MINIMAL WORKING TEMPLATE
+------------------------
+#include <Wire.h>
+#include <U8g2lib.h>
+
+U8G2_SSD1306_72X40_ER_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE, 6, 5);
+
+void setup() {
+    u8g2.begin();
+    u8g2.setContrast(255);
+}
+
+void loop() {
+    u8g2.clearBuffer();
+    u8g2.setCursor(0, 20);
+    u8g2.print("Hello");
+    u8g2.sendBuffer();
+}
