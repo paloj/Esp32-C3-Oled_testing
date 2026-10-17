@@ -37,6 +37,7 @@ constexpr int Y_OFFSET = 24; // Correct for this board: empirically determined
 WebServer server(80);
 String displayText1 = "ESP32-C3";
 String displayText2 = "72x40 OLED";
+String displayText3 = "";
 
 
 
@@ -111,6 +112,7 @@ void setup() {
         html += "<form action='/set' method='POST'>";
         html += "Line 1: <input name='line1' value='" + displayText1 + "'><br>";
         html += "Line 2: <input name='line2' value='" + displayText2 + "'><br>";
+        html += "Line 3: <input name='line3' value='" + displayText3 + "'><br>";
         html += "<input type='submit' value='Update'>";
         html += "</form>";
         html += "<p>Current IP: " + WiFi.localIP().toString() + "</p>";
@@ -121,6 +123,8 @@ void setup() {
     server.on("/set", HTTP_POST, []() {
         if (server.hasArg("line1")) displayText1 = server.arg("line1");
         if (server.hasArg("line2")) displayText2 = server.arg("line2");
+        if (server.hasArg("line3")) displayText3 = server.arg("line3");
+        showIpOnScreen = false;
         server.sendHeader("Location", "/");
         server.send(303);
     });
@@ -166,10 +170,12 @@ void loop() {
     // Normal display
     u8g2.clearBuffer();
     u8g2.drawFrame(X_OFFSET, Y_OFFSET, OLED_W, OLED_H);
-    u8g2.setCursor(X_OFFSET + 6, Y_OFFSET + 14);
+    u8g2.setCursor(X_OFFSET + 6, Y_OFFSET + 12);
     u8g2.print(displayText1.c_str());
-    u8g2.setCursor(X_OFFSET + 6, Y_OFFSET + 28);
+    u8g2.setCursor(X_OFFSET + 6, Y_OFFSET + 24);
     u8g2.print(displayText2.c_str());
+    u8g2.setCursor(X_OFFSET + 6, Y_OFFSET + 36);
+    u8g2.print(displayText3.c_str());
     u8g2.sendBuffer();
     delay(100);
 }
